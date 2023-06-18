@@ -6,17 +6,17 @@ import time
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from VRP.VRP_Actor import Model
-from VRP.creat_vrp import creat_data,reward1
+from VRP_Actor import Model
+from creat_vrp import creat_data,reward1
 from collections import OrderedDict
 from collections import namedtuple
 from itertools import product
 from torch.optim.lr_scheduler import LambdaLR
-from VRP.rolloutBaseline1 import RolloutBaseline
+from rolloutBaseline1 import RolloutBaseline
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
-n_nodes = 21
+n_nodes = 21            # 顾客点数
 steps = n_nodes
 def rollout(model, dataset,batch_size, n_nodes):
 
@@ -52,11 +52,11 @@ def train():
 
     params = OrderedDict(
         lr=[1e-3],
-        batch_size=[512],
+        batch_size=[128],
         hidden_node_dim=[128],
         hidden_edge_dim=[16],
         conv_laysers=[4],
-        data_size=[768000]
+        data_size=[1280]
     )
     runs = RunBuilder.get_runs(params)
     #-------------------------------------------------------------------------------------------------------------------------------------
@@ -68,9 +68,9 @@ def train():
         data_loder = creat_data(n_nodes, data_size,batch_size=batch_size)
         valid_loder = creat_data(n_nodes, 10000, batch_size=batch_size)
         print('Data creation completed')
-
+        # 生成actor网络
         actor = Model(3, hidden_node_dim, 1, hidden_edge_dim, conv_laysers=conv_laysers).to(device)
-        rol_baseline = RolloutBaseline(actor,valid_loder,n_nodes=steps)
+        rol_baseline = RolloutBaseline(actor,valid_loder,n_nodes=steps)         # 基线
         #initWeights(actor)
         filepath = os.path.join(folder, filename)
         '''path = os.path.join(filepath,'%s' % 3)
@@ -91,9 +91,9 @@ def train():
             scheduler = LambdaLR(actor_optim, lr_lambda=lambda f: 0.96 ** epoch)
             for batch_idx, batch in enumerate(data_loder):
                 batch = batch.to(device)
-                tour_indices, tour_logp = actor(batch,steps*2)
+                tour_indices, tour_logp = actor(batch,steps*2)  # 获取路径
 
-                rewar = reward1(batch.x, tour_indices.detach(),n_nodes)
+                rewar = reward1(batch.x, tour_indices.detach(),n_nodes) # 计算回报值
                 base_reward = rol_baseline.eval(batch,steps)
 
                 advantage = (rewar - base_reward)
@@ -107,7 +107,7 @@ def train():
                 #grad_norms = clip_grad_norms(actor_optim.param_groups, 1)
                 #torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm)
                 actor_optim.step()
-                scheduler.step()
+                scheduler.step()            # 用于更换学习率
                 rewards.append(torch.mean(rewar.detach()).item())
                 losses.append(torch.mean(actor_loss.detach()).item())
 

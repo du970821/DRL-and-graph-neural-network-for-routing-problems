@@ -3,7 +3,7 @@ import torch
 from scipy.stats import ttest_rel
 import copy
 
-from VRP.creat_vrp import reward1
+from creat_vrp import reward1
 
 from torch.nn import DataParallel
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -28,8 +28,8 @@ class RolloutBaseline():
         self.dataset = dataset
         self._update_model(model, epoch)
     def _update_model(self, model, epoch, dataset=None):
-        self.model = copy.deepcopy(model)
-        self.bl_vals = rollout(self.model, self.dataset, n_nodes=self.n_nodes).cpu().numpy()
+        self.model = copy.deepcopy(model)       # 深复制
+        self.bl_vals = rollout(self.model, self.dataset, n_nodes=self.n_nodes).cpu().numpy()        # 计算当前model参数下的基线值
         self.mean = self.bl_vals.mean()
         self.epoch = epoch
 

@@ -14,7 +14,7 @@ def rollout(model, dataset, n_nodes):
     model.eval()
     def eval_model_bat(bat):
         with torch.no_grad():
-            cost, _= model(bat,n_nodes*2,True)
+            cost, _= model(bat,n_nodes*2,True)      # 前向传播获取路径
             cost = reward1(bat.x,cost.detach(), n_nodes)
         return cost.cpu()
     totall_cost = torch.cat([eval_model_bat(bat.to(device))for bat in dataset], 0)
@@ -24,13 +24,13 @@ class RolloutBaseline():
 
     def __init__(self, model,  dataset, n_nodes=50,epoch=0):
         super(RolloutBaseline, self).__init__()
-        self.n_nodes = n_nodes
-        self.dataset = dataset
-        self._update_model(model, epoch)
+        self.n_nodes = n_nodes      # 节点个数
+        self.dataset = dataset      # 数据集
+        self._update_model(model, epoch)        # 更新模型
     def _update_model(self, model, epoch, dataset=None):
-        self.model = copy.deepcopy(model)
-        self.bl_vals = rollout(self.model, self.dataset, n_nodes=self.n_nodes).cpu().numpy()
-        self.mean = self.bl_vals.mean()
+        self.model = copy.deepcopy(model)       # 复制模型
+        self.bl_vals = rollout(self.model, self.dataset, n_nodes=self.n_nodes).cpu().numpy()        # 使用当前模型，计算rewards
+        self.mean = self.bl_vals.mean() # 计算平均值，也就是后面要用的基线
         self.epoch = epoch
 
     def eval(self, x, n_nodes):

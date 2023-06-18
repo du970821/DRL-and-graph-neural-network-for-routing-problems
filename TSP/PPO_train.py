@@ -2,8 +2,8 @@ import os
 import time
 import torch
 import torch.nn as nn
-from TSP.PPO_Model import Agentppo,Memory
-from TSP.create_tsp_instance import creat_data,reward,reward1
+from PPO_Model import Agentppo,Memory
+from create_tsp_instance import creat_data,reward,reward1
 from collections import OrderedDict
 from collections import namedtuple
 from itertools import product

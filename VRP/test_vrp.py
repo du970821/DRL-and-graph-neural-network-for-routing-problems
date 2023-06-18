@@ -2,8 +2,8 @@ import torch
 import os
 import numpy as np
 from torch_geometric.data import Data, DataLoader
-from VRP.creat_vrp import reward1,creat_instance
-from VRP.VRP_Actor import Model
+from creat_vrp import reward1,creat_instance
+from VRP_Actor import Model
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

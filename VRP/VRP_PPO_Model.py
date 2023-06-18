@@ -8,7 +8,7 @@ import math
 from torch.distributions.categorical import Categorical
 from torch.optim.lr_scheduler import LambdaLR
 import time
-from VRP.vrpUpdate import update_mask, update_state
+from vrpUpdate import update_mask, update_state
 # from PPORolloutBaselin import RolloutBaseline
 from sklearn.preprocessing import MinMaxScaler
 

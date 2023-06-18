@@ -11,13 +11,13 @@ def creat_instance(num,n_nodes=100,random_seed=None):
 
         data = np.random.uniform(0,1,(n_nodes,2))
         return data
-    datas = random_tsp(n_nodes)
+    datas = random_tsp(n_nodes) # 生成坐标点
 
     def c_dist(x1,x2):
         return ((x1[0]-x2[0])**2+(x1[1]-x2[1])**2)**0.5
     #edges = torch.zeros(n_nodes,n_nodes)
     edges = np.zeros((n_nodes,n_nodes,1))
-
+    # 计算两点之间的距离
     for i, (x1, y1) in enumerate(datas):
         for j, (x2, y2) in enumerate(datas):
             d = c_dist((x1, y1), (x2, y2))
@@ -29,7 +29,7 @@ def creat_instance(num,n_nodes=100,random_seed=None):
         50: 4.,
         100: 5.
     }
-
+    # 生成需求量
     demand = np.random.randint(1, 10, size=(n_nodes-1)) # Demand, uniform integer 1 ... 9
     demand = np.array(demand)/10
     demand = np.insert(demand,0,0.)
@@ -40,11 +40,11 @@ def creat_instance(num,n_nodes=100,random_seed=None):
 print(d,f)'''
 def creat_data(n_nodes,num_samples=10000 ,batch_size=32):
     edges_index = []
-    for i in range(n_nodes):
+    for i in range(n_nodes):        # 获取两个点之间的边
         for j in range(n_nodes):
             edges_index.append([i, j])
-    edges_index = torch.LongTensor(edges_index)
-    edges_index = edges_index.transpose(dim0=0,dim1=1)
+    edges_index = torch.LongTensor(edges_index)     # 转为tensor
+    edges_index = edges_index.transpose(dim0=0,dim1=1)      # 转换维度，将起点和终点分开
 
     datas = []
 

@@ -3,7 +3,7 @@ import torch
 from scipy.stats import ttest_rel
 import copy
 
-from TSP.create_tsp_instance import reward1
+from create_tsp_instance import reward1
 
 from torch.nn import DataParallel
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

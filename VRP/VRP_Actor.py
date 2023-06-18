@@ -5,7 +5,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import remove_self_loops, add_self_loops, softmax
 import math
 from torch.distributions.categorical import Categorical
-from VRP.vrpUpdate import update_mask,update_state
+from vrpUpdate import update_mask,update_state
 INIT = False
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
@@ -26,8 +26,8 @@ class GatConv(MessagePassing):
         self.negative_slope = negative_slope
         self.dropout = dropout
 
-        self.fc = nn.Linear(in_channels, out_channels)
-        self.attn = nn.Linear(2 * out_channels + edge_channels, out_channels)
+        self.fc = nn.Linear(in_channels, out_channels)      # 全连接层  用于提取特征
+        self.attn = nn.Linear(2 * out_channels + edge_channels, out_channels)       #
         if INIT:
             for name, p in self.named_parameters():
                 if 'weight' in name:
@@ -41,8 +41,8 @@ class GatConv(MessagePassing):
         return self.propagate(edge_index, size=size, x=x, edge_attr=edge_attr)
 
     def message(self, edge_index_i, x_i, x_j, size_i, edge_attr):
-        x = torch.cat([x_i, x_j, edge_attr], dim=-1)
-        alpha = self.attn(x)
+        x = torch.cat([x_i, x_j, edge_attr], dim=-1)        # 合并坐标x坐标Y和边特征向量
+        alpha = self.attn(x)        # 公式3.5
         alpha = F.leaky_relu(alpha, self.negative_slope)
         alpha = softmax(alpha, edge_index_i, num_nodes=size_i)
 
@@ -61,13 +61,13 @@ class Encoder(nn.Module):
     def __init__(self, input_node_dim, hidden_node_dim, input_edge_dim, hidden_edge_dim, conv_layers=3, n_heads=4):
         super(Encoder, self).__init__()
         self.hidden_node_dim = hidden_node_dim
-        self.fc_node = nn.Linear(input_node_dim, hidden_node_dim)
-        self.bn = nn.BatchNorm1d(hidden_node_dim)
+        self.fc_node = nn.Linear(input_node_dim, hidden_node_dim)       # 线性层
+        self.bn = nn.BatchNorm1d(hidden_node_dim)                       # batch标准化
         self.be = nn.BatchNorm1d(hidden_edge_dim)
-        self.fc_edge = nn.Linear(input_edge_dim, hidden_edge_dim)  # 1-16
-
+        self.fc_edge = nn.Linear(input_edge_dim, hidden_edge_dim)  # 1-16   边线性层
+        # 生成GAT网络
         self.convs1 = nn.ModuleList(
-            [GatConv(hidden_node_dim, hidden_node_dim, hidden_edge_dim) for i in range(conv_layers)])
+            [GatConv(hidden_node_dim, hidden_node_dim, hidden_edge_dim) for i in range(conv_layers)])       # GAT层
         if INIT:
             for name, p in self.named_parameters():
                 if 'weight' in name:
@@ -82,11 +82,11 @@ class Encoder(nn.Module):
         # edge_attr = data.edge_attr
 
         x = torch.cat([data.x, data.demand], -1)
-        x = self.fc_node(x)
-        x = self.bn(x)
-        edge_attr = self.fc_edge(data.edge_attr)
-        edge_attr = self.be(edge_attr)
-        for conv in self.convs1:
+        x = self.fc_node(x)     # 全连接层编码 点
+        x = self.bn(x)          # 公式3.3
+        edge_attr = self.fc_edge(data.edge_attr)    # 全连接层编码  边
+        edge_attr = self.be(edge_attr)              # 公式3.4
+        for conv in self.convs1:        # GAT编码
             # x = conv(x,data.edge_index)
             x1 = conv(x, data.edge_index, edge_attr)
             x = x + x1
@@ -130,17 +130,17 @@ class Attention1(nn.Module):
         K = self.k(context).view(batch_size, n_nodes, self.n_heads, -1)
         V = self.v(context).view(batch_size, n_nodes, self.n_heads, -1)
         Q, K, V = Q.transpose(1, 2), K.transpose(1, 2), V.transpose(1, 2)
-
+        # 公式3.11
         compatibility = self.norm * torch.matmul(Q, K.transpose(2,3))  # (batch_size,n_heads,1,hidden_dim)*(batch_size,n_heads,hidden_dim,n_nodes)
         compatibility = compatibility.squeeze(2)  # (batch_size,n_heads,n_nodes)
         mask = mask.unsqueeze(1).expand_as(compatibility)
         u_i = compatibility.masked_fill(mask.bool(), float("-inf"))
-
+        # 公式3.12
         scores = F.softmax(u_i, dim=-1)  # (batch_size,n_heads,n_nodes)
         scores = scores.unsqueeze(2)
         out_put = torch.matmul(scores, V)  # (batch_size,n_heads,1,n_nodes )*(batch_size,n_heads,n_nodes,head_dim)
         out_put = out_put.squeeze(2).view(batch_size, self.hidden_dim)  # （batch_size,n_heads,hidden_dim）
-        out_put = self.fc(out_put)
+        out_put = self.fc(out_put)      # 第二个全连接层
 
         return out_put  # (batch_size,hidden_dim)
 
@@ -148,11 +148,11 @@ class Attention1(nn.Module):
 class ProbAttention(nn.Module):
     def __init__(self, n_heads, input_dim, hidden_dim):
         super(ProbAttention, self).__init__()
-        self.n_heads = n_heads
+        self.n_heads = n_heads          # 自注意力机制头数
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
 
-        self.norm = 1 / math.sqrt(hidden_dim)
+        self.norm = 1 / math.sqrt(hidden_dim)       # 公式中的分母
         self.k = nn.Linear(input_dim, hidden_dim, bias=False)
         self.mhalayer = Attention1(n_heads, 1, input_dim, hidden_dim)
         if INIT:
@@ -177,7 +177,7 @@ class ProbAttention(nn.Module):
         K = self.k(context).view(batch_size, n_nodes, -1)
         compatibility = self.norm * torch.matmul(Q, K.transpose(1, 2))  # (batch_size,1,n_nodes)
         compatibility = compatibility.squeeze(1)
-        x = torch.tanh(compatibility)
+        x = torch.tanh(compatibility)       # 公式3.14
         x = x * (10)
         x = x.masked_fill(mask.bool(), float("-inf"))
         scores = F.softmax(x/T, dim=-1)
@@ -193,7 +193,7 @@ class Decoder1(nn.Module):
 
         self.prob = ProbAttention(8, input_dim, hidden_dim)
 
-        self.fc = nn.Linear(hidden_dim+1, hidden_dim, bias=False)
+        self.fc = nn.Linear(hidden_dim+1, hidden_dim, bias=False)       # 解码器第一层也就是多头自注意力层
         self.fc1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
 
         #self._input = nn.Parameter(torch.Tensor(2 * hidden_dim))
@@ -217,27 +217,27 @@ class Decoder1(nn.Module):
 
         log_ps = []
         actions = []
-
+        # actor网络获取路径
         for i in range(n_steps):
             if not mask1[:, 1:].eq(0).any():
                 break
             if i == 0:
-                _input = encoder_inputs[:, 0, :]  # depot
+                _input = encoder_inputs[:, 0, :]  # depot   # 初始化时从配送中心出发  此时的特征向量为每一个sample的第一个
 
             # -----------------------------------------------------------------------------pool+cat(first_node,current_node)
             decoder_input = torch.cat([_input, dynamic_capcity], -1)
-            decoder_input = self.fc(decoder_input)
-            pool = self.fc1(pool)
+            decoder_input = self.fc(decoder_input)      # decoder_input是将剩余载货能力添加到最后面，然后使用全连接层进行编码
+            pool = self.fc1(pool)       # todo:看一下这个pool是哪个
             decoder_input = decoder_input + pool
             # -----------------------------------------------------------------------------cat(pool,first_node,current_node)
             '''decoder_input = torch.cat([pool,_input,dynamic_capcity], dim=-1)
             decoder_input  = self.fc(decoder_input)'''
             # -----------------------------------------------------------------------------------------------------------
-            if i == 0:
+            if i == 0:      # 更新掩码
                 mask, mask1 = update_mask(demands, dynamic_capcity, index.unsqueeze(-1), mask1, i)
             p = self.prob(decoder_input, encoder_inputs, mask,T)
             dist = Categorical(p)
-            if greedy:
+            if greedy:  # todo：令greedy为False
                 _, index = p.max(dim=-1)
             else:
                 index = dist.sample()
@@ -248,10 +248,10 @@ class Decoder1(nn.Module):
             log_p = log_p * (1. - is_done)
 
             log_ps.append(log_p.unsqueeze(1))
-
+            # 更新状态
             dynamic_capcity = update_state(demands, dynamic_capcity, index.unsqueeze(-1), capcity[0].item())
-            mask, mask1 = update_mask(demands, dynamic_capcity, index.unsqueeze(-1), mask1, i)
-
+            mask, mask1 = update_mask(demands, dynamic_capcity, index.unsqueeze(-1), mask1, i)      # 更新掩码
+            # 更新decoder_input
             _input = torch.gather(encoder_inputs, 1,
                                   index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,
                                                                            encoder_inputs.size(2))).squeeze(1)
@@ -265,14 +265,14 @@ class Decoder1(nn.Module):
 class Model(nn.Module):
     def __init__(self, input_node_dim, hidden_node_dim, input_edge_dim, hidden_edge_dim, conv_laysers):
         super(Model, self).__init__()
-        self.encoder = Encoder(input_node_dim, hidden_node_dim, input_edge_dim, hidden_edge_dim, conv_laysers)
+        self.encoder = Encoder(input_node_dim, hidden_node_dim, input_edge_dim, hidden_edge_dim, conv_laysers)      # 编码器网络
         self.decoder = Decoder1(hidden_node_dim, hidden_node_dim)
 
     def forward(self, datas,  n_steps,greedy=False,T=1):
         x = self.encoder(datas)  # (batch,seq_len,hidden_node_dim)
-        pooled = x.mean(dim=1)
+        pooled = x.mean(dim=1)      # 公式3.8
         demand = datas.demand
         capcity = datas.capcity
 
-        actions, log_p = self.decoder(x, pooled, capcity,demand, n_steps,T, greedy)
+        actions, log_p = self.decoder(x, pooled, capcity,demand, n_steps,T, greedy)     # 点和概率
         return actions, log_p

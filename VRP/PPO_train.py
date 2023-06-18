@@ -3,8 +3,8 @@ import time
 
 import torch
 
-from VRP.VRP_PPO_Model import Agentppo,Memory
-from VRP.creat_vrp import creat_data,reward,reward1
+from VRP_PPO_Model import Agentppo,Memory
+from creat_vrp import creat_data,reward,reward1
 from collections import OrderedDict
 from collections import namedtuple
 from itertools import product

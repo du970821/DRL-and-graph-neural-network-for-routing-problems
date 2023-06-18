@@ -21,12 +21,12 @@ class GatConv(MessagePassing):
                  negative_slope=0.2, dropout=0):
         super(GatConv, self).__init__(aggr='add')
 
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.negative_slope = negative_slope
+        self.in_channels = in_channels          # 输入维度
+        self.out_channels = out_channels        # 输出维度
+        self.negative_slope = negative_slope    # 设置激活函数在负数部分的斜率。输入数据小于零的部分乘以这个因子，斜率为0时，小于零的部分完全滤掉，默认为0
         self.dropout = dropout
 
-        self.fc = nn.Linear(in_channels, out_channels)
+        self.fc = nn.Linear(in_channels, out_channels)      #
         self.attn = nn.Linear(2 * out_channels + edge_channels, out_channels)
         if INIT:
             for name, p in self.named_parameters():
@@ -37,18 +37,18 @@ class GatConv(MessagePassing):
                     nn.init.constant_(p, 0)
 
     def forward(self, x, edge_index, edge_attr, size=None):
-        x = self.fc(x)
+        x = self.fc(x)      # GAT又使用了一层全连接层
         return self.propagate(edge_index, size=size, x=x, edge_attr=edge_attr)
 
     def message(self, edge_index_i, x_i, x_j, size_i, edge_attr):
-        x = torch.cat([x_i, x_j, edge_attr], dim=-1)
-        alpha = self.attn(x)
-        alpha = F.leaky_relu(alpha, self.negative_slope)
+        x = torch.cat([x_i, x_j, edge_attr], dim=-1)        # 将x,y,边进行组合
+        alpha = self.attn(x)        # 使用全连接层转换维度
+        alpha = F.leaky_relu(alpha, self.negative_slope)        # 激活函数
 
-        alpha = softmax(alpha, edge_index_i, num_nodes=size_i)
+        alpha = softmax(alpha, edge_index_i, num_nodes=size_i)  # 公式3.5
 
         # Sample attention coefficients stochastically.
-        alpha = F.dropout(alpha, p=self.dropout, training=self.training)
+        alpha = F.dropout(alpha, p=self.dropout, training=self.training)    # 遗忘
 
         return x_j * alpha
 
@@ -62,13 +62,13 @@ class Encoder(nn.Module):
     def __init__(self, input_node_dim, hidden_node_dim, input_edge_dim, hidden_edge_dim, conv_layers=3, n_heads=4):
         super(Encoder, self).__init__()
         self.hidden_node_dim = hidden_node_dim
-        self.fc_node = nn.Linear(input_node_dim, hidden_node_dim)
-        self.bn = nn.BatchNorm1d(hidden_node_dim)
-        self.be = nn.BatchNorm1d(hidden_edge_dim)
-        self.fc_edge = nn.Linear(input_edge_dim, hidden_edge_dim)  # 1-16
+        self.fc_node = nn.Linear(input_node_dim, hidden_node_dim)       # 点的全连接层
+        self.bn = nn.BatchNorm1d(hidden_node_dim)                       # 点标准化
+        self.be = nn.BatchNorm1d(hidden_edge_dim)                       # 边标准化
+        self.fc_edge = nn.Linear(input_edge_dim, hidden_edge_dim)  # 1-16   # 边的全连接层
 
         self.convs1 = nn.ModuleList(
-            [GatConv(hidden_node_dim, hidden_node_dim, hidden_edge_dim) for i in range(conv_layers)])
+            [GatConv(hidden_node_dim, hidden_node_dim, hidden_edge_dim) for i in range(conv_layers)])       # 设置GAT
         if INIT:
             for name, p in self.named_parameters():
                 if 'weight' in name:
@@ -81,16 +81,16 @@ class Encoder(nn.Module):
         batch_size = data.num_graphs
         # print(batch_size)
         # edge_attr = data.edge_attr
-
-        x = torch.cat([data.x, data.demand], -1)
-        x = self.fc_node(x)
-        x = self.bn(x)
-        edge_attr = self.fc_edge(data.edge_attr)
-        edge_attr = self.be(edge_attr)
-        for conv in self.convs1:
+        # 图3.2b
+        x = torch.cat([data.x, data.demand], -1)        # 将各个点的坐标和需求量放一块
+        x = self.fc_node(x)                             # 使用全连接层进行特征提取
+        x = self.bn(x)                                  # 标准化
+        edge_attr = self.fc_edge(data.edge_attr)        # 提取边数据的特征
+        edge_attr = self.be(edge_attr)                  # 标准化
+        for conv in self.convs1:                        # GAT
             # x = conv(x,data.edge_index)
             x1 = conv(x, data.edge_index, edge_attr)
-            x = x + x1
+            x = x + x1      # 公式3.6
 
         x = x.reshape((batch_size, -1, self.hidden_node_dim))
 
@@ -149,7 +149,7 @@ class Attention1(nn.Module):
 class ProbAttention(nn.Module):
     def __init__(self, n_heads, input_dim, hidden_dim):
         super(ProbAttention, self).__init__()
-        self.n_heads = n_heads
+        self.n_heads = n_heads              # 多头自注意力机制
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
 

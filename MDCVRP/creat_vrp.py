@@ -10,7 +10,7 @@ def creat_instance(num,n_nodes=100,random_seed=None):
     np.random.seed(random_seed)
     def random_tsp(n_nodes,random_seed=None):
 
-        data = np.random.uniform(0,1,(n_nodes,2))
+        data = np.random.uniform(0,1,(n_nodes,2))       # 均匀分布 生成坐标点
         return data
     datas = random_tsp(n_nodes)
 
@@ -23,20 +23,20 @@ def creat_instance(num,n_nodes=100,random_seed=None):
         for j, (x2, y2) in enumerate(datas):
             d = c_dist((x1, y1), (x2, y2))
             edges[i][j][0]=d
-    edges = edges.reshape(-1, 1)
+    edges = edges.reshape(-1, 1)        # 计算两点之间距离
     CAPACITIES = {
         10: 2.,
         20: 3.,
         50: 4.,
         100: 5.
     }
-    num_depot = n_nodes%10
+    num_depot = n_nodes%10          # 计算配送中心数量
     demand = np.random.randint(1, 10, size=(n_nodes-num_depot)) # Demand, uniform integer 1 ... 9
-    demand = np.array(demand)/10
+    demand = np.array(demand)/10    # 随机生成0.1到1之间需求量
 
     for j in range(num_depot):
         demand = np.insert(demand,0,0.)
-    capcity = CAPACITIES[n_nodes-num_depot]
+    capcity = CAPACITIES[n_nodes-num_depot]         # 容量
     return datas,edges,demand,capcity#demand(num,node) capcity(num)
 
 '''a,s,d,f = creat_instance(2,21)
@@ -54,10 +54,10 @@ def creat_data(n_nodes,num_samples=10000 ,batch_size=32):
     for i in range(num_samples):
         node, edge, demand, capcity = creat_instance(num_samples, n_nodes)
         data = Data(x=torch.from_numpy(node).float(), edge_index=edges_index,edge_attr=torch.from_numpy(edge).float(),
-                    demand=torch.tensor(demand).unsqueeze(-1).float(),capcity=torch.tensor(capcity).unsqueeze(-1).float())
+                    demand=torch.tensor(demand).unsqueeze(-1).float(),capcity=torch.tensor(capcity).unsqueeze(-1).float())      # 产生一组数据
         datas.append(data)
     #print(datas)
-    dl = DataLoader(datas, batch_size=batch_size)
+    dl = DataLoader(datas, batch_size=batch_size)       # 生成迭代器
     return dl
 
 def reward(static, tour_indices,n_nodes,num_depotss):
@@ -149,7 +149,7 @@ def reward1(static, tour_indices,n_nodes):
 
     static = static.reshape(-1,n_nodes,2)
     print(static.shape)
-    static = torch.from_numpy(static).to('cuda')
+    # static = torch.from_numpy(static).to('cuda')
     static = static.transpose(2,1)
 
     tour_indices_1 = deepcopy(tour_indices)

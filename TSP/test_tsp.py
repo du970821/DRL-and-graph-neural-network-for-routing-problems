@@ -2,8 +2,8 @@ import torch
 import os
 import numpy as np
 from torch_geometric.data import Data, DataLoader
-from TSP.create_tsp_instance import reward1
-from TSP.Actor import Model
+from create_tsp_instance import reward1
+from Actor import Model
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def rollout(model, dataset,  n_nodes):

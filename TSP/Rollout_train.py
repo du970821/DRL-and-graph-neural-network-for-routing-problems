@@ -6,17 +6,17 @@ import time
 import torch.nn as nn
 
 import torch.optim as optim
-from TSP.Actor import Model
-from TSP.create_tsp_instance import creat_data,reward1
+from Actor import Model
+from create_tsp_instance import creat_data,reward1
 from collections import OrderedDict
 from collections import namedtuple
 from itertools import product
 from torch.optim.lr_scheduler import LambdaLR
-from TSP.rolloutBaseline import RolloutBaseline
+from rolloutBaseline import RolloutBaseline
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
-n_nodes = 50 # Problem size
+n_nodes = 20 # Problem size
 def rollout(model, dataset,batch_size, n_nodes):
     model.eval()
     def eval_model_bat(bat):
@@ -62,7 +62,7 @@ def train():
         hidden_node_dim=[128],
         hidden_edge_dim=[16],
         conv_laysers=[4],
-        data_size=[12800]
+        data_size=[1280]
     )
     runs = RunBuilder.get_runs(params)#一次训练多个超参数
     #-------------------------------------------------------------------------------------------------------------------------------------

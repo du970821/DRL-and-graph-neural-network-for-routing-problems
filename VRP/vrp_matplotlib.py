@@ -2,10 +2,10 @@
 import os
 import numpy as np
 import torch
-from VRP.creat_vrp import reward1
+from creat_vrp import reward1
 
 from torch_geometric.data import Data,DataLoader
-from VRP.VRP_Actor import Model
+from VRP_Actor import Model
 from matplotlib import pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle

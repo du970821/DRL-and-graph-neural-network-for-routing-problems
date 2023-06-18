@@ -52,11 +52,11 @@ def train():
 
     params = OrderedDict(
         lr=[1e-4],
-        batch_size=[512],
+        batch_size=[256],
         hidden_node_dim=[128],
         hidden_edge_dim=[16],
         conv_laysers=[4],
-        data_size=[512]
+        data_size=[256]
     )
     runs = RunBuilder.get_runs(params)
     #-------------------------------------------------------------------------------------------------------------------------------------
@@ -68,9 +68,10 @@ def train():
         data_loder = creat_data(n_nodes, data_size,batch_size=batch_size)
         valid_loder = creat_data(n_nodes, 128, batch_size=batch_size)
         print('Data creation completed')
-
+        # 创建actor模型
         actor = Model(3, hidden_node_dim, 1, hidden_edge_dim, conv_laysers=conv_laysers).to(device)
-        rol_baseline = RolloutBaseline(actor,valid_loder,n_nodes=steps)
+        rol_baseline = RolloutBaseline(actor,valid_loder,n_nodes=steps)     # 获取基线
+        print('rol_baseline:',rol_baseline)
         #initWeights(actor)
         filepath = os.path.join(folder, filename)
         '''path = os.path.join(filepath,'%s' % 3)
@@ -88,14 +89,14 @@ def train():
             epoch_start = time.time()
             start = epoch_start
 
-            scheduler = LambdaLR(actor_optim, lr_lambda=lambda f: 0.96 ** epoch)
+            scheduler = LambdaLR(actor_optim, lr_lambda=lambda f: 0.96 ** epoch)        # 根据epoch调整学习率
             for batch_idx, batch in enumerate(data_loder):
                 batch = batch.to(device)
-                tour_indices, tour_logp = actor(batch,steps*2)
+                tour_indices, tour_logp = actor(batch,steps*2,n_nodes%10)      # actor获取路径和概率
 
                 rewar = reward1(batch.x, tour_indices.detach(),n_nodes)
                 base_reward = rol_baseline.eval(batch,steps)
-
+                print('base_reward:',base_reward)
                 advantage = (rewar - base_reward)
                 if not advantage.ne(0).any():
                     print("advantage==0.")

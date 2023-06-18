@@ -1,11 +1,11 @@
 import torch
 import numpy as np
-from TSP.create_tsp_instance import reward1
+from create_tsp_instance import reward1
 xyt = torch.tensor([0.1,0.2,0.3])
 xyt1 = torch.tensor([1,2,3]).float().unsqueeze(0)
 import os
 from torch_geometric.data import Data,DataLoader
-from TSP.Actor import  Model
+from Actor import  Model
 #from gurobiBaseline import solve_all_gurobi
 from matplotlib import pyplot as plt
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
